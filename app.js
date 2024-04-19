@@ -11,8 +11,16 @@ var app;
   // Append the application canvas to the document body
   document.body.appendChild(app.view);
 
-  const columns = 10;
-  const rows = 10;
+  drawMaze(10); // Example usage
+})();
+
+export default function drawMaze(mazeSize) {
+  // Clear previous grid
+  app.stage.removeChildren();
+
+  // Messed something with colum / row ordering in loops so it works with NxN grid only
+  const columns = mazeSize;
+  const rows = mazeSize;
 
   // Create a maze using Depth First Search algorithm
   const mazeGrid = generateMazeGrid(rows, columns);
@@ -22,7 +30,7 @@ var app;
 
   // Display it on screen using numbered rectangles
   drawGrid(cellGrid);
-})();
+}
 
 function generateCellGrid(mazeGrid) {
   // Initialize a 2D array to store the cell objects
@@ -74,7 +82,7 @@ function generateCellGrid(mazeGrid) {
 }
 
 function drawGrid(grid) {
-  const cellSize = Math.floor(window.innerHeight / grid.length);
+  const cellSize = (window.innerHeight - 5) / grid.length;
   const wallSize = 2; // Also works as offset
   const graphics = new Graphics();
 
@@ -105,7 +113,7 @@ function drawGrid(grid) {
 
       // Draw numbers
       const text = new Text({
-        style: { fontFamily: "Arial", fontSize: 24, fill: 0xffffff, align: "center" },
+        style: { fontFamily: "Arial", fontSize: 20, fill: 0xffffff, align: "center" },
         text: grid[i][j].value.toString(),
         x: i * cellSize + wallSize + 2, //Shift them a little to the right so that line and number don't overlap
         y: j * cellSize + wallSize,
@@ -195,7 +203,7 @@ function removeClosedBranchWalls(grid, mazeGrid) {
           y = checkedCellRow;
 
           iterator++;
-          if (iterator > 100) {
+          if (iterator > 1600) {
             console.error("Something went wrong. Infinite loop stopped");
             break;
           }
