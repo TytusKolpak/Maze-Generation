@@ -20,14 +20,10 @@ function generateMazeGrid(rows, cols) {
     if (grid[row][col] === -1) {
       grid[row][col] = num++;
       let neighbors = getNeighbors(row, col, rows, cols);
-      neighbors = neighbors.filter(
-        (neighbor) => grid[neighbor.row][neighbor.col] === -1
-      );
+      neighbors = neighbors.filter((neighbor) => grid[neighbor.row][neighbor.col] === -1);
       neighbors.sort((a, b) => {
-        let distanceA =
-          Math.abs(a.row - ((num / cols) | 0)) + Math.abs(a.col - (num % cols));
-        let distanceB =
-          Math.abs(b.row - ((num / cols) | 0)) + Math.abs(b.col - (num % cols));
+        let distanceA = Math.abs(a.row - ((num / cols) | 0)) + Math.abs(a.col - (num % cols));
+        let distanceB = Math.abs(b.row - ((num / cols) | 0)) + Math.abs(b.col - (num % cols));
         return distanceA - distanceB || Math.random() - 0.5; // Randomize order if distances are equal
       });
       for (let neighbor of neighbors) {
@@ -47,9 +43,4 @@ function getNeighbors(row, col, rows, cols) {
   if (col > 0) neighbors.push({ row, col: col - 1 });
   if (col < cols - 1) neighbors.push({ row, col: col + 1 });
   return neighbors;
-}
-
-// Output the maze grid
-function printGrid(grid) {
-  grid.forEach((row) => console.log(row.join("\t")));
 }

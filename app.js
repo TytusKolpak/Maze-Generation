@@ -11,44 +11,56 @@ var app;
   // Append the application canvas to the document body
   document.body.appendChild(app.view);
 
-  // 1. Draw grid 10 x 10
   const columns = 10;
   const rows = 10;
-  drawGrid(columns, rows);
 
-  // 2. Generate maze path (2d array of numbers)
+  // Create a maze using Depth First Search algorithm
   const mazeGrid = generateMazeGrid(rows, columns);
 
-  // 3. Add text to cells
-  drawCellNumbers(mazeGrid);
+  // Use its values to create a 2D array of cells
+  const cellGrid = generateCellGrid(mazeGrid);
+
+  // Display it on screen using numbered rectangles
+  drawGrid(cellGrid);
 })();
 
-function drawGrid(columns, rows) {
-  const cellSize = Math.floor(window.innerHeight / rows);
-  const borderSize = 1; // Also works as offset
-  const graphics = new Graphics();
-  for (let i = 0; i < columns; i++) {
-    for (let j = 0; j < rows; j++) {
-      graphics.rect(i * cellSize + borderSize, j * cellSize + borderSize, cellSize, cellSize);
-      graphics.stroke({ width: borderSize, color: 0xffffff });
+function generateCellGrid(mazeGrid) {
+  // Initialize a 2D array to store the cell objects
+  let grid = [];
+  for (let i = 0; i < mazeGrid.length; i++) {
+    let gridRow = [];
+    for (let j = 0; j < mazeGrid[0].length; j++) {
+      let gridCell = {
+        row: i,
+        col: j,
+        value: mazeGrid[i][j],
+      };
+      gridRow.push(gridCell);
     }
+    grid.push(gridRow);
   }
-  app.stage.addChild(graphics);
+  return grid;
 }
 
-function drawCellNumbers(grid) {
+function drawGrid(grid) {
   const cellSize = Math.floor(window.innerHeight / grid.length);
   const borderSize = 1; // Also works as offset
+  const graphics = new Graphics();
   for (let i = 0; i < grid.length; i++) {
     for (let j = 0; j < grid[0].length; j++) {
+      // Draw rectangles
+      graphics.rect(i * cellSize + borderSize, j * cellSize + borderSize, cellSize, cellSize);
+      graphics.stroke({ width: borderSize, color: 0xffffff });
+
+      // Draw numbers
       const text = new Text({
         style: { fontFamily: "Arial", fontSize: 24, fill: 0xffffff, align: "center" },
-        text: grid[i][j].toString(),
+        text: grid[i][j].value.toString(),
         x: i * cellSize + borderSize,
         y: j * cellSize + borderSize,
       });
       app.stage.addChild(text);
-      
     }
   }
+  app.stage.addChild(graphics);
 }
