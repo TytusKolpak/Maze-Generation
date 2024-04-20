@@ -6,15 +6,19 @@ var app;
   app = new Application();
 
   // Initialize the application
-  await app.init({ background: "#1099bb", resizeTo: window });
+  await app.init({
+    // background: "#1099bb",
+    resizeTo: window,
+  });
 
   // Append the application canvas to the document body
   document.body.appendChild(app.view);
 
-  drawMaze(10); // Example usage
+  const mazeSize = 10;
+  drawMaze(mazeSize); // Example usage
 })();
 
-export default function drawMaze(mazeSize) {
+export function drawMaze(mazeSize) {
   // Clear previous grid
   app.stage.removeChildren();
 
@@ -26,7 +30,7 @@ export default function drawMaze(mazeSize) {
   const mazeGrid = generateMazeGrid(rows, columns);
 
   // Use its values to create a 2D array of cells
-  const cellGrid = generateCellGrid(mazeGrid);
+  cellGrid = generateCellGrid(mazeGrid);
 
   // Display it on screen using numbered rectangles
   drawGrid(cellGrid);
@@ -213,3 +217,6 @@ function removeClosedBranchWalls(grid, mazeGrid) {
   }
   return grid;
 }
+
+export default app;
+export var cellGrid;
