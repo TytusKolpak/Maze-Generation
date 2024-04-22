@@ -28,11 +28,12 @@ var bunny,
   accelerationY = 0, // Acceleration rate in y axis (vertical)
   moveSpeedX = 0,
   moveSpeedY = 0,
-  maxSpeedX = 10,
-  maxSpeedY = 10,
+  maxSpeedX = 4,
+  maxSpeedY = 4,
   minSpeedAbs = 0.1,
   force = 0.4,
   frictionCoefficient = 0.04;
+let gameOver = false;
 
 // Listen for addBunny button click
 const addBunnyButton = document.getElementById("addBunnyButton");
@@ -93,7 +94,11 @@ addBunnyButton.addEventListener("click", async () => {
 
     // Detect collision with the cell walls
     detectCollision(walls);
-
+    if (!gameOver) {
+      if (bunny.x > cellWidth * (richGrid[0].length - 1) && bunny.y > cellHeight * (richGrid.length - 1)) {
+        gameOverFun();
+      }
+    }
     // Change of position according to standard shift formula: Shift = Velocity * Time (1m = 1m/s * 1s)
     bunny.x += moveSpeedX * delta.deltaTime;
     bunny.y += moveSpeedY * delta.deltaTime;
@@ -102,6 +107,23 @@ addBunnyButton.addEventListener("click", async () => {
   app.ticker.add(tickerHandler);
 });
 
+function gameOverFun() {
+  gameOver = true;
+  // Create a div element for the win message
+  var winMessage = document.createElement("div");
+  winMessage.textContent = "You Win!";
+
+  // Apply styles to the win message
+  winMessage.style.position = "fixed";
+  winMessage.style.top = "50%";
+  winMessage.style.left = "50%";
+  winMessage.style.transform = "translate(-50%, -50%)";
+  winMessage.style.color = "#ffffff";
+  winMessage.style.fontSize = "90px";
+
+  // Append the message element to the body
+  document.body.appendChild(winMessage);
+}
 function generateCollisionWalls(cellWidth, cellHeight) {
   const walls = [];
 
