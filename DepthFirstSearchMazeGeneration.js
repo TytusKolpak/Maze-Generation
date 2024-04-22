@@ -11,7 +11,14 @@ function generateMazeGrid(gridWidth, gridHeight) {
     richGrid.push([]);
     for (let x = 0; x < gridWidth; x++) {
       // value=0 will later work as a sign that the cell can be visited (wasn't incorporated into the grid yet)
-      richGrid[y].push({ xCoordinate: x, yCoordinate: y, order: y * gridWidth + x + 1, value: 0 });
+      richGrid[y].push({
+        xCoordinate: x,
+        yCoordinate: y,
+        order: y * gridWidth + x + 1,
+        value: 0,
+        topWall: true,
+        rightWall: true,
+      });
     }
   }
   // Now the order of the cells look like this:
@@ -21,8 +28,6 @@ function generateMazeGrid(gridWidth, gridHeight) {
   // Define left upper corner as the start point and right bottom corner as the finish point
   let startXCoordinate = 0;
   let startYCoordinate = 0;
-  let finishXCoordinate = gridWidth - 1;
-  let finishYCoordinate = gridHeight - 1;
 
   // Set the first cell's value as 1
   let valueIterator = 1;
@@ -45,10 +50,10 @@ function generateMazeGrid(gridWidth, gridHeight) {
     richGrid[nextCell.yCoordinate][nextCell.xCoordinate].value = valueIterator;
 
     // Simplify the array to have just the cell values in it
-    const simpleMazeGrid = richGrid.map((row) => row.map((cell) => cell.value));
+    const simpleGrid = richGrid.map((row) => row.map((cell) => cell.value));
 
     // Check if there are any unvisited cells
-    const mazeHasUnvisitedCells = simpleMazeGrid.flat().some((element) => element === 0);
+    const mazeHasUnvisitedCells = simpleGrid.flat().some((element) => element === 0);
 
     // If the maze has no unvisited cells or the iterator is too large (error catching) mark maze as completed
     if (!mazeHasUnvisitedCells || valueIterator > maxValueIterator) {
@@ -56,9 +61,7 @@ function generateMazeGrid(gridWidth, gridHeight) {
     }
   }
 
-  // return richGrid;
-  const simpleMazeGrid = richGrid.map((row) => row.map((cell) => cell.value));
-  return simpleMazeGrid;
+  return richGrid;
 }
 
 // Function to return coordinates of the next cell to be visited (with validation)
@@ -93,15 +96,25 @@ function selectNextCellToVisit(richGrid, currentX, currentY, gridWidth, gridHeig
   // Select one of the valid directions at random
   const selectedDirection = validDirections[Math.floor(Math.random() * validDirections.length)];
 
+  // !IMPORTANT It happens to be so that we only need top and right walls + 1 big left and 1 big bottom wall to fill whole maze,
+  // any more would be duplicates and so we do not need to store or use them
   // Assign coordinates of the cell to visit next
   if (selectedDirection == 0) {
+    // Next cell is above current cell
     nextCell = { xCoordinate: currentX, yCoordinate: currentY - 1 };
+    richGrid[currentY][currentX].topWall = false;
   } else if (selectedDirection == 1) {
+    // Next cell is to the right of current cell
     nextCell = { xCoordinate: currentX + 1, yCoordinate: currentY };
+    richGrid[currentY][currentX].rightWall = false;
   } else if (selectedDirection == 2) {
+    // Next cell is below current cell
     nextCell = { xCoordinate: currentX, yCoordinate: currentY + 1 };
+    richGrid[nextCell.yCoordinate][nextCell.xCoordinate].topWall = false;
   } else if (selectedDirection == 3) {
+    // Next cell is to the left of current cell
     nextCell = { xCoordinate: currentX - 1, yCoordinate: currentY };
+    richGrid[nextCell.yCoordinate][nextCell.xCoordinate].rightWall = false;
   } else {
     // Some of the potential branching cells might be no longer valid so we need to search for the last one with some paths still open
     const branchingCell = potentialBranchingCells.pop();
@@ -138,8 +151,8 @@ function tempLogDirections(directions) {
   console.log(message);
 }
 
-function tempLogSimplifiedGrid(simpleMazeGrid) {
-  simpleMazeGrid.forEach((row) => {
+function tempLogSimplifiedGrid(simpleGrid) {
+  simpleGrid.forEach((row) => {
     let cells = "";
     row.forEach((element) => {
       cells += element.toString().padEnd(3, " ");
@@ -151,5 +164,5 @@ function tempLogSimplifiedGrid(simpleMazeGrid) {
 
 // const richMazeGrid = generateMazeGrid(5, 3);
 // console.log(richMazeGrid);
-// const simpleMazeGrid = richMazeGrid.map((row) => row.map((cell) => cell.value));
-// console.log(simpleMazeGrid);
+// const simpleGrid = richMazeGrid.map((row) => row.map((cell) => cell.value));
+// console.log(simpleGrid);

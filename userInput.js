@@ -1,4 +1,4 @@
-import app, { drawMaze, cellGrid, cellsText } from "./app.js";
+import app, { drawMaze, richGrid, cellsText, wallSize } from "./app.js";
 import { Assets, Sprite } from "./node_modules/pixi.js/dist/pixi.min.mjs";
 
 console.log("X");
@@ -28,11 +28,11 @@ var bunny,
   accelerationY = 0, // Acceleration rate in y axis (vertical)
   moveSpeedX = 0,
   moveSpeedY = 0,
-  maxSpeedX = 5,
-  maxSpeedY = 5,
+  maxSpeedX = 10,
+  maxSpeedY = 10,
   minSpeedAbs = 0.1,
   force = 0.4,
-  frictionCoefficient = 0.01;
+  frictionCoefficient = 0.04;
 
 // Listen for addBunny button click
 const addBunnyButton = document.getElementById("addBunnyButton");
@@ -50,8 +50,8 @@ addBunnyButton.addEventListener("click", async () => {
   bunny.anchor.set(0.5);
 
   // Move the sprite to the center of the first cell
-  const cellWidth = (window.innerHeight - 5) / cellGrid.length;
-  const cellHeight = (window.innerHeight - 5) / cellGrid.length;
+  const cellWidth = (window.innerHeight - 5) / richGrid.length;
+  const cellHeight = (window.innerHeight - 5) / richGrid.length;
   bunny.x = cellWidth / 2;
   bunny.y = cellHeight / 2;
 
@@ -105,85 +105,61 @@ addBunnyButton.addEventListener("click", async () => {
 function generateCollisionWalls(cellWidth, cellHeight) {
   const walls = [];
 
-  // Function to check if a wall with the same position and dimensions already exists in the array
-  function isDuplicateWall(wall) {
-    return walls.some(
-      (existingWall) =>
-        existingWall.x === wall.x &&
-        existingWall.y === wall.y &&
-        existingWall.isVertical === wall.isVertical &&
-        existingWall.length === wall.length
-    );
-  }
-
-  // Iterate over each cell in the maze array
-  // !important rowIndex and colIndex are backwards temporarily because of a mistake earlier
-  cellGrid.forEach((row, colIndex) => {
-    row.forEach((cell, rowIndex) => {
-      // Calculate the position of the current cell
-      const x = colIndex * cellWidth;
-      const y = rowIndex * cellHeight;
-      const upperWallExists = cell.upperWall;
-      const bottomWallExists = cell.bottomWall;
-      const leftWallExists = cell.leftWall;
-      const rightWallExists = cell.rightWall;
-
-      // console.log({ rowIndex, colIndex, x, y, upperWallExists, bottomWallExists, leftWallExists, rightWallExists });
-      // Create wall objects based on the cell's properties
-      // Upper wall
-      if (cell.upperWall && !isDuplicateWall({ x: x, y: y, isVertical: false, length: cellWidth })) {
+  // It happens to be so that we only need top and right walls + 1 big left and 1 big bottom wall to fill whole maze, any more would be duplicates
+  // TODO Implement and check the hypothesis
+  richGrid.forEach((row) => {
+    row.forEach((cell) => {
+      if (cell.topWall) {
         walls.push({
-          x: x,
-          y: y,
+          x: cell.xCoordinate * cellWidth + wallSize,
+          y: cell.yCoordinate * cellHeight + wallSize,
           isVertical: false,
           length: cellWidth,
         });
       }
-      // Bottom wall
-      if (cell.bottomWall && !isDuplicateWall({ x: x, y: y + cellHeight, isVertical: false, length: cellWidth })) {
+      if (cell.rightWall) {
         walls.push({
-          x: x,
-          y: y + cellHeight,
-          isVertical: false,
-          length: cellWidth,
-        });
-      }
-      // Left wall
-      if (cell.leftWall && !isDuplicateWall({ x: x, y: y, isVertical: true, length: cellHeight })) {
-        walls.push({
-          x: x,
-          y: y,
-          isVertical: true,
-          length: cellHeight,
-        });
-      }
-      // Right wall
-      if (cell.rightWall && !isDuplicateWall({ x: x + cellWidth, y: y, isVertical: true, length: cellHeight })) {
-        walls.push({
-          x: x + cellWidth,
-          y: y,
+          x: (cell.xCoordinate + 1) * cellWidth + wallSize,
+          y: cell.yCoordinate * cellHeight + wallSize,
           isVertical: true,
           length: cellHeight,
         });
       }
     });
   });
-  console.log(walls);
+
+  // Big left wall
+  walls.push({
+    x: wallSize,
+    y: wallSize,
+    isVertical: true,
+    length: cellHeight * richGrid.length,
+  });
+
+  // Big bottom wall
+  walls.push({
+    x: wallSize,
+    y: cellHeight * richGrid.length + wallSize,
+    isVertical: false,
+    length: cellWidth * richGrid[0].length,
+  });
 
   return walls;
 }
 
 function detectCollision(walls) {
+  // TODO review and add detection of impaling too
+  // FIXME Collision can occur in bunny's middle point currently not at its edges
   const bunnyLeftSide = bunny.x - bunny.width / 2;
   const bunnyRightSide = bunny.x + bunny.width / 2;
   const bunnyTopSide = bunny.y - bunny.height / 2;
   const bunnyBottomSide = bunny.y + bunny.height / 2;
 
-  const buffer = 5; // Add a small buffer to the collision detection
+  const buffer = 5; // Add a small buffer to the collision detection (it increases bunny size artificially)
 
   walls.forEach((wall) => {
     if (wall.isVertical) {
-      // Collision can occur
+      // Collision can occur from left or right (large area)
       if (bunny.y >= wall.y && bunny.y <= wall.y + wall.length) {
         // Bunny overlaps the wall (collision occurs)
         if (bunnyLeftSide - buffer <= wall.x && bunnyRightSide + buffer >= wall.x) {
@@ -191,9 +167,17 @@ function detectCollision(walls) {
           moveSpeedX = -moveSpeedX;
         }
       }
+      // Collision can occur from up or down (very small area)
+      // if (bunny.x >= wall.x && bunny.x <= wall.x + wallSize) {
+      //   // Bunny overlaps the wall (collision occurs)
+      //   if (bunnyLeftSide - buffer <= wall.x && bunnyRightSide + buffer >= wall.x) {
+      //     // Bounce the bunny in the other direction immediately
+      //     moveSpeedX = -moveSpeedX;
+      //   }
+      // }
     } else {
       // Wall is horizontal
-      // Collision can occur
+      // Collision can occur from up or down (large area)
       if (bunny.x >= wall.x && bunny.x <= wall.x + wall.length) {
         // Bunny overlaps the wall (collision occurs)
         if (bunnyTopSide - buffer <= wall.y && bunnyBottomSide + buffer >= wall.y) {
@@ -234,7 +218,6 @@ document.addEventListener("keydown", (event) => {
 
 function resetStage() {
   console.log("r for reset");
-
   app.ticker.remove(tickerHandler);
   app.stage.removeChildren();
   resetBunnyMovementParameters();
