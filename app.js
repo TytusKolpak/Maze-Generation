@@ -14,7 +14,7 @@ var app;
   // Append the application canvas to the document body
   document.body.appendChild(app.view);
 
-  const mazeSize = 10;
+  const mazeSize = 2;
   drawMaze(mazeSize); // Example usage
 })();
 
@@ -28,6 +28,7 @@ export function drawMaze(mazeSize) {
 
   // Create a maze using Depth First Search algorithm
   const mazeGrid = generateMazeGrid(rows, columns);
+  console.log(mazeGrid);
 
   // Use its values to create a 2D array of cells
   cellGrid = generateCellGrid(mazeGrid);
@@ -85,6 +86,7 @@ function generateCellGrid(mazeGrid) {
   return finishedGrid;
 }
 
+export var cellsText = [];
 function drawGrid(grid) {
   const cellSize = (window.innerHeight - 5) / grid.length;
   const wallSize = 2; // Also works as offset
@@ -96,22 +98,18 @@ function drawGrid(grid) {
       if (grid[i][j].upperWall) {
         graphics.moveTo(i * cellSize + wallSize, j * cellSize + wallSize); // Starting point of the line
         graphics.lineTo((i + 1) * cellSize + wallSize, j * cellSize + wallSize); // Ending point of the line
-        // graphics.stroke({ width: wallSize, color: 0xff0000 }); // Draw the line red for top
       }
       if (grid[i][j].rightWall) {
         graphics.moveTo((i + 1) * cellSize + wallSize, j * cellSize + wallSize);
         graphics.lineTo((i + 1) * cellSize + wallSize, (j + 1) * cellSize + wallSize);
-        // graphics.stroke({ width: wallSize, color: 0x00ff00 }); // Draw the line green for right
       }
       if (grid[i][j].bottomWall) {
         graphics.moveTo(i * cellSize + wallSize, (j + 1) * cellSize + wallSize);
         graphics.lineTo((i + 1) * cellSize + wallSize, (j + 1) * cellSize + wallSize);
-        // graphics.stroke({ width: wallSize, color: 0x0000ff }); // Draw the line blue for bottom
       }
       if (grid[i][j].leftWall) {
         graphics.moveTo(i * cellSize + wallSize, j * cellSize + wallSize);
         graphics.lineTo(i * cellSize + wallSize, (j + 1) * cellSize + wallSize);
-        // graphics.stroke({ width: wallSize, color: 0x000000 }); // Draw the line black for left
       }
       graphics.stroke({ width: wallSize, color: 0xffffff });
 
@@ -122,7 +120,7 @@ function drawGrid(grid) {
         x: i * cellSize + wallSize + 2, //Shift them a little to the right so that line and number don't overlap
         y: j * cellSize + wallSize,
       });
-      app.stage.addChild(text);
+      cellsText.push(text);
     }
   }
   app.stage.addChild(graphics);
@@ -130,9 +128,8 @@ function drawGrid(grid) {
 
 function removeClosedBranchWalls(grid, mazeGrid) {
   // Check for backtracked paths
-  // If the only neighbor whose value is different by 1 has that value smaller by 1 it means we are in a deadEnd
+  // If there is a cell whose only neighbor with value different by 1 has value Smaller by 1 it means we are in a deadEnd
   // and we need to backtrack. Find which cells are like this
-
   //column
   for (let i = 0; i < mazeGrid.length; i++) {
     //row
@@ -172,15 +169,21 @@ function removeClosedBranchWalls(grid, mazeGrid) {
           if (y - 1 >= 0 && mazeGrid[x][y - 1] === checkedCellValue) {
             checkedCellCol = x;
             checkedCellRow = y - 1;
+            //console.log("Looked for cell", checkedCellValue, "and found at", x, y - 1);
           } else if (x - 1 >= 0 && mazeGrid[x - 1][y] === checkedCellValue) {
             checkedCellCol = x - 1;
             checkedCellRow = y;
+            //console.log("Looked for cell", checkedCellValue, "and found at", x - 1, y);
           } else if (x + 1 < mazeGrid[0].length && mazeGrid[x + 1][y] === checkedCellValue) {
             checkedCellCol = x + 1;
             checkedCellRow = y;
+            //console.log("Looked for cell", checkedCellValue, "and found at", x + 1, y);
           } else if (y + 1 < mazeGrid.length && mazeGrid[x][y + 1] === checkedCellValue) {
             checkedCellCol = x;
             checkedCellRow = y + 1;
+            //console.log("Looked for cell", checkedCellValue, "and found at", x, y + 1);
+          } else {
+            //console.log("Checked cell", checkedCellValue, " not found");
           }
 
           // Now we have indexes of the previous cell
@@ -207,8 +210,8 @@ function removeClosedBranchWalls(grid, mazeGrid) {
           y = checkedCellRow;
 
           iterator++;
-          if (iterator > 1600) {
-            console.error("Something went wrong. Infinite loop stopped");
+          if (iterator > 100000) {
+            console.error("Something went wrong. There has been 100000 iterations of backtrack path opening. Infinite loop stopped");
             break;
           }
         }
