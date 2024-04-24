@@ -34,7 +34,7 @@ export function drawMaze(mazeSize) {
 }
 
 function drawGrid(grid) {
-  console.log(grid);
+  // console.log(grid);
   const gridHeight = grid.length;
   const gridWidth = grid[0].length;
   const cellSize = (window.innerHeight - 5) / grid.length;

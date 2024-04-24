@@ -1,43 +1,50 @@
 import app, { drawMaze, richGrid, cellsText, wallSize } from "./app.js";
 import { Assets, Sprite } from "./node_modules/pixi.js/dist/pixi.min.mjs";
 
-console.log("X");
+// Initialize global movement parameters
+var numbersDisplayed = true,
+  tickerHandler,
+  bunny,
+  accelerationX = 0, // Acceleration rate in x axis (horizontal)
+  accelerationY = 0, // Acceleration rate in y axis (vertical)
+  moveSpeedX = 0,
+  moveSpeedY = 0,
+  maxSpeedX = 8,
+  maxSpeedY = 8,
+  minSpeedAbs = 0.1,
+  force = 0.2,
+  frictionCoefficient = 0.04,
+  gameOver = false;
+
 // Listen for changes to the input field
 const gridSizeInput = document.getElementById("gridSizeInput");
 gridSizeInput.addEventListener("input", (event) => {
   resetStage();
 });
 
-const addCellNumbers = document.getElementById("addCellNumbers");
-addCellNumbers.addEventListener("click", () => {
-  cellsText.forEach((text) => {
-    app.stage.addChild(text);
-  });
+const addOrRemoveCellNumbersButton = document.getElementById("addOrRemoveCellNumbers");
+addOrRemoveCellNumbersButton.addEventListener("click", () => {
+  addOrRemoveCellNumbers();
 });
 
-const removeCellNumbers = document.getElementById("removeCellNumbers");
-removeCellNumbers.addEventListener("click", () => {
-  cellsText.forEach((text) => {
-    app.stage.removeChild(text);
-  });
-});
-
-// Initialize global movement parameters (We will only control acceleration now to mimic real life (but not force to make it too complicated))
-var bunny,
-  accelerationX = 0, // Acceleration rate in x axis (horizontal)
-  accelerationY = 0, // Acceleration rate in y axis (vertical)
-  moveSpeedX = 0,
-  moveSpeedY = 0,
-  maxSpeedX = 4,
-  maxSpeedY = 4,
-  minSpeedAbs = 0.1,
-  force = 0.4,
-  frictionCoefficient = 0.04;
-let gameOver = false;
+function addOrRemoveCellNumbers() {
+  if (numbersDisplayed) {
+    console.log("n for remove Numbers");
+    cellsText.forEach((text) => {
+      app.stage.removeChild(text);
+    });
+    numbersDisplayed = false;
+  } else {
+    console.log("n for add Numbers");
+    cellsText.forEach((text) => {
+      app.stage.addChild(text);
+    });
+    numbersDisplayed = true;
+  }
+}
 
 // Listen for addBunny button click
 const addBunnyButton = document.getElementById("addBunnyButton");
-var tickerHandler;
 addBunnyButton.addEventListener("click", async () => {
   // Disable the button to prevent multiple bunnies from being added
   addBunnyButton.disabled = true;
@@ -111,24 +118,17 @@ function gameOverFun() {
   gameOver = true;
   // Create a div element for the win message
   var winMessage = document.createElement("div");
+  winMessage.id = "gameOver";
   winMessage.textContent = "You Win!";
-
-  // Apply styles to the win message
-  winMessage.style.position = "fixed";
-  winMessage.style.top = "50%";
-  winMessage.style.left = "50%";
-  winMessage.style.transform = "translate(-50%, -50%)";
-  winMessage.style.color = "#ffffff";
-  winMessage.style.fontSize = "90px";
 
   // Append the message element to the body
   document.body.appendChild(winMessage);
 }
+
 function generateCollisionWalls(cellWidth, cellHeight) {
   const walls = [];
 
   // It happens to be so that we only need top and right walls + 1 big left and 1 big bottom wall to fill whole maze, any more would be duplicates
-  // TODO Implement and check the hypothesis
   richGrid.forEach((row) => {
     row.forEach((cell) => {
       if (cell.topWall) {
@@ -169,48 +169,76 @@ function generateCollisionWalls(cellWidth, cellHeight) {
   return walls;
 }
 
+let directionXChanged = false;
+let directionYChanged = false;
 function detectCollision(walls) {
-  // TODO review and add detection of impaling too
-  // FIXME Collision can occur in bunny's middle point currently not at its edges
-  const bunnyLeftSide = bunny.x - bunny.width / 2;
-  const bunnyRightSide = bunny.x + bunny.width / 2;
-  const bunnyTopSide = bunny.y - bunny.height / 2;
-  const bunnyBottomSide = bunny.y + bunny.height / 2;
+  // TODO Is there a way to not bounce vertically at the outside corners and not to be impaled
 
   const buffer = 5; // Add a small buffer to the collision detection (it increases bunny size artificially)
+  const bunnyLeftSide = bunny.x - bunny.width / 2 - buffer;
+  const bunnyRightSide = bunny.x + bunny.width / 2 + buffer;
+  const bunnyTopSide = bunny.y - bunny.height / 2 - buffer;
+  const bunnyBottomSide = bunny.y + bunny.height / 2 + buffer;
 
-  walls.forEach((wall) => {
+  // 2*buffer so that it will not bounce vertically from outside walls
+  for (let i = 0; i < walls.length; i++) {
+    const wall = walls[i];
     if (wall.isVertical) {
-      // Collision can occur from left or right (large area)
-      if (bunny.y >= wall.y && bunny.y <= wall.y + wall.length) {
-        // Bunny overlaps the wall (collision occurs)
-        if (bunnyLeftSide - buffer <= wall.x && bunnyRightSide + buffer >= wall.x) {
-          // Bounce the bunny in the other direction immediately
-          moveSpeedX = -moveSpeedX;
+      if (bunnyBottomSide - 2 * buffer >= wall.y && bunnyTopSide + 2 * buffer <= wall.y + wall.length) {
+        if (bunnyRightSide >= wall.x && bunnyLeftSide <= wall.x) {
+          if (!directionXChanged) {
+            moveSpeedX = -moveSpeedX;
+            directionXChanged = true;
+            console.log("directionXChanged");
+          } else {
+            directionXChanged = false;
+          }
         }
       }
-      // Collision can occur from up or down (very small area)
-      // if (bunny.x >= wall.x && bunny.x <= wall.x + wallSize) {
-      //   // Bunny overlaps the wall (collision occurs)
-      //   if (bunnyLeftSide - buffer <= wall.x && bunnyRightSide + buffer >= wall.x) {
-      //     // Bounce the bunny in the other direction immediately
-      //     moveSpeedX = -moveSpeedX;
-      //   }
-      // }
     } else {
       // Wall is horizontal
-      // Collision can occur from up or down (large area)
-      if (bunny.x >= wall.x && bunny.x <= wall.x + wall.length) {
-        // Bunny overlaps the wall (collision occurs)
-        if (bunnyTopSide - buffer <= wall.y && bunnyBottomSide + buffer >= wall.y) {
-          // Bounce the bunny in the other direction immediately
-          moveSpeedY = -moveSpeedY;
+      if (bunnyRightSide - 2 * buffer >= wall.x && bunnyLeftSide + 2 * buffer <= wall.x + wall.length) {
+        if (bunnyBottomSide >= wall.y && bunnyTopSide <= wall.y) {
+          if (!directionYChanged) {
+            moveSpeedY = -moveSpeedY;
+            directionYChanged = true;
+            console.log("directionYChanged");
+          } else {
+            directionYChanged = false;
+          }
         }
       }
     }
-  });
+  }
 }
-// Listen for arrow keys to control the bunny's movement
+
+function resetStage() {
+  console.log("r for reset");
+  app.ticker.remove(tickerHandler);
+  app.stage.removeChildren();
+  if (document.getElementById("gameOver")) {
+    document.getElementById("gameOver").remove();
+  }
+  resetBunnyMovementParameters();
+  addBunnyButton.disabled = false;
+  gameOver = false;
+  const newSize = parseInt(gridSizeInput.value);
+  if (newSize) {
+    if (newSize >= 2 && newSize <= 50) {
+      drawMaze(newSize);
+    }
+  } else {
+    drawMaze(5);
+  }
+}
+
+function resetBunnyMovementParameters() {
+  accelerationX = 0;
+  accelerationY = 0;
+  moveSpeedX = 0;
+  moveSpeedY = 0;
+}
+
 document.addEventListener("keydown", (event) => {
   switch (event.key) {
     case "ArrowUp":
@@ -235,31 +263,14 @@ document.addEventListener("keydown", (event) => {
       console.log("b for add Bunny");
       addBunnyButton.click();
       break;
+    case "n":
+      addOrRemoveCellNumbers();
+      break;
+    default:
+      console.log("No key binding to this button:", event.key);
+      break;
   }
 });
-
-function resetStage() {
-  console.log("r for reset");
-  app.ticker.remove(tickerHandler);
-  app.stage.removeChildren();
-  resetBunnyMovementParameters();
-  addBunnyButton.disabled = false;
-  const newSize = parseInt(gridSizeInput.value);
-  if (newSize) {
-    if (newSize >= 2 && newSize <= 50) {
-      drawMaze(newSize);
-    }
-  } else {
-    drawMaze(10);
-  }
-}
-
-function resetBunnyMovementParameters() {
-  accelerationX = 0;
-  accelerationY = 0;
-  moveSpeedX = 0;
-  moveSpeedY = 0;
-}
 
 // Listen for keyup events to stop the bunny's movement
 document.addEventListener("keyup", (event) => {
