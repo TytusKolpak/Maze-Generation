@@ -1,5 +1,6 @@
 // Few global variables for ease of use
 let potentialBranchingCells = [];
+let globalOrder = 1;
 
 // Function to generate a maze-like grid of numbers
 function generateMazeGrid(gridWidth, gridHeight) {
@@ -48,6 +49,7 @@ function generateMazeGrid(gridWidth, gridHeight) {
 
     // Assign new value to it
     richGrid[nextCell.yCoordinate][nextCell.xCoordinate].value = valueIterator;
+    richGrid[nextCell.yCoordinate][nextCell.xCoordinate].order = globalOrder;
 
     // Simplify the array to have just the cell values in it
     const simpleGrid = richGrid.map((row) => row.map((cell) => cell.value));
@@ -103,19 +105,24 @@ function selectNextCellToVisit(richGrid, currentX, currentY, gridWidth, gridHeig
     // Next cell is above current cell
     nextCell = { xCoordinate: currentX, yCoordinate: currentY - 1 };
     richGrid[currentY][currentX].topWall = false;
+    globalOrder++;
   } else if (selectedDirection == 1) {
     // Next cell is to the right of current cell
     nextCell = { xCoordinate: currentX + 1, yCoordinate: currentY };
     richGrid[currentY][currentX].rightWall = false;
+    globalOrder++;
   } else if (selectedDirection == 2) {
     // Next cell is below current cell
     nextCell = { xCoordinate: currentX, yCoordinate: currentY + 1 };
     richGrid[nextCell.yCoordinate][nextCell.xCoordinate].topWall = false;
+    globalOrder++;
   } else if (selectedDirection == 3) {
     // Next cell is to the left of current cell
     nextCell = { xCoordinate: currentX - 1, yCoordinate: currentY };
     richGrid[nextCell.yCoordinate][nextCell.xCoordinate].rightWall = false;
+    globalOrder++;
   } else {
+    // We have reached a dead end
     // Some of the potential branching cells might be no longer valid so we need to search for the last one with some paths still open
     const branchingCell = potentialBranchingCells.pop();
 
@@ -123,46 +130,12 @@ function selectNextCellToVisit(richGrid, currentX, currentY, gridWidth, gridHeig
     currentX = branchingCell.xCoordinate;
     currentY = branchingCell.yCoordinate;
 
+    // Since we branch from a new cell let's reset global order
+    globalOrder = richGrid[currentY][currentX].order;
+
     // Here we need to backtrack to find a cell from which movement is possible (using self call)
     return selectNextCellToVisit(richGrid, currentX, currentY, gridWidth, gridHeight);
   }
 
   return nextCell;
 }
-
-function tempLogDirections(directions) {
-  let message = "I can go: ";
-  directions.forEach((direction) => {
-    switch (direction) {
-      case 0:
-        message += "up ";
-        break;
-      case 1:
-        message += "right ";
-        break;
-      case 2:
-        message += "down ";
-        break;
-      case 3:
-        message += "left ";
-        break;
-    }
-  });
-  console.log(message);
-}
-
-function tempLogSimplifiedGrid(simpleGrid) {
-  simpleGrid.forEach((row) => {
-    let cells = "";
-    row.forEach((element) => {
-      cells += element.toString().padEnd(3, " ");
-    });
-    console.log(cells);
-  });
-  console.log("---");
-}
-
-// const richMazeGrid = generateMazeGrid(5, 3);
-// console.log(richMazeGrid);
-// const simpleGrid = richMazeGrid.map((row) => row.map((cell) => cell.value));
-// console.log(simpleGrid);

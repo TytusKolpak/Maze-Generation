@@ -1,5 +1,5 @@
 import app, { drawMaze, richGrid, cellsText, wallSize } from "./app.js";
-import { Assets, Sprite } from "./node_modules/pixi.js/dist/pixi.min.mjs";
+import { Assets, Sprite, Graphics } from "./node_modules/pixi.js/dist/pixi.min.mjs";
 
 // Initialize global movement parameters
 var numbersDisplayed = true,
@@ -14,42 +14,30 @@ var numbersDisplayed = true,
   minSpeedAbs = 0.1,
   force = 0.2,
   frictionCoefficient = 0.04,
-  gameOver = false;
+  gameOver = false,
+  directionXChanged = false,
+  directionYChanged = false;
+
+const gridSizeInput = document.getElementById("gridSizeInput");
+const addOrRemoveCellNumbersButton = document.getElementById("addOrRemoveCellNumbers");
+const addBunnyButton = document.getElementById("addBunnyButton");
+const addKnightButton = document.getElementById("addKnightButton");
+const floodTheMazeButton = document.getElementById("floodTheMazeButton");
 
 // Listen for changes to the input field
-const gridSizeInput = document.getElementById("gridSizeInput");
 gridSizeInput.addEventListener("input", (event) => {
   resetStage();
 });
 
-const addOrRemoveCellNumbersButton = document.getElementById("addOrRemoveCellNumbers");
 addOrRemoveCellNumbersButton.addEventListener("click", () => {
   addOrRemoveCellNumbers();
 });
 
-function addOrRemoveCellNumbers() {
-  if (numbersDisplayed) {
-    console.log("n for remove Numbers");
-    cellsText.forEach((text) => {
-      app.stage.removeChild(text);
-    });
-    numbersDisplayed = false;
-  } else {
-    console.log("n for add Numbers");
-    cellsText.forEach((text) => {
-      app.stage.addChild(text);
-    });
-    numbersDisplayed = true;
-  }
-}
-
-// Listen for addBunny button click
-const addBunnyButton = document.getElementById("addBunnyButton");
 addBunnyButton.addEventListener("click", async () => {
   // Disable the button to prevent multiple bunnies from being added
   addBunnyButton.disabled = true;
   // Load the bunny texture
-  const texture = await Assets.load("bunny.png");
+  const texture = await Assets.load("images/bunny.png");
 
   // Create a bunny Sprite
   bunny = new Sprite(texture);
@@ -114,6 +102,107 @@ addBunnyButton.addEventListener("click", async () => {
   app.ticker.add(tickerHandler);
 });
 
+addKnightButton.addEventListener("click", () => {
+  addKnight();
+});
+
+floodTheMazeButton.addEventListener("click", () => {
+  floodTheMaze();
+});
+
+document.addEventListener("keydown", (event) => {
+  switch (event.key) {
+    case "ArrowUp":
+      accelerationY = -force;
+      break;
+    case "ArrowDown":
+      accelerationY = force;
+      break;
+    case "ArrowLeft":
+      accelerationX = -force;
+      break;
+    case "ArrowRight":
+      accelerationX = force;
+      break;
+    case " ": // space bar
+      resetBunnyMovementParameters();
+      break;
+    case "r":
+      resetStage();
+      break;
+    case "b":
+      console.log("b for add Bunny");
+      addBunnyButton.click();
+      break;
+    case "n":
+      addOrRemoveCellNumbers();
+      break;
+    case "k":
+      addKnight();
+      break;
+    case "f":
+      floodTheMaze();
+      break;
+    default:
+      console.log("No key binding to this button:", event.key);
+      break;
+  }
+});
+
+document.addEventListener("keyup", (event) => {
+  if (bunny) {
+    switch (event.key) {
+      case "ArrowUp":
+      case "ArrowDown":
+        accelerationY = 0;
+        break;
+      case "ArrowLeft":
+      case "ArrowRight":
+        accelerationX = 0;
+        break;
+    }
+  }
+});
+
+async function addKnight() {
+  const texture = await Assets.load("images/knight.png");
+  const knight = new Sprite(texture);
+  knight.anchor.set(0.5);
+
+  const cellWidth = (window.innerHeight - 5) / richGrid.length;
+  const cellHeight = (window.innerHeight - 5) / richGrid.length;
+
+  // Resize the sprite
+  knight.width = cellWidth * 0.8;
+  knight.height = cellHeight * 0.8;
+
+  // Move the sprite
+  const cellX = Math.floor(Math.random() * richGrid.length);
+  const cellY = Math.floor(Math.random() * richGrid.length);
+
+  knight.x = (cellX + 0.5) * cellWidth;
+  knight.y = (cellY + 0.5) * cellHeight;
+
+  app.stage.addChild(knight);
+  console.log("Added knight to the stage");
+}
+
+function addOrRemoveCellNumbers() {
+  if (numbersDisplayed) {
+    console.log("n for remove Numbers");
+    cellsText.forEach((text) => {
+      app.stage.removeChild(text);
+    });
+    numbersDisplayed = false;
+  } else {
+    console.log("n for add Numbers");
+    cellsText.forEach((text) => {
+      app.stage.addChild(text);
+    });
+    numbersDisplayed = true;
+  }
+}
+
 function gameOverFun() {
   gameOver = true;
   // Create a div element for the win message
@@ -169,8 +258,6 @@ function generateCollisionWalls(cellWidth, cellHeight) {
   return walls;
 }
 
-let directionXChanged = false;
-let directionYChanged = false;
 function detectCollision(walls) {
   // TODO Is there a way to not bounce vertically at the outside corners and not to be impaled
 
@@ -189,7 +276,6 @@ function detectCollision(walls) {
           if (!directionXChanged) {
             moveSpeedX = -moveSpeedX;
             directionXChanged = true;
-            console.log("directionXChanged");
           } else {
             directionXChanged = false;
           }
@@ -202,7 +288,6 @@ function detectCollision(walls) {
           if (!directionYChanged) {
             moveSpeedY = -moveSpeedY;
             directionYChanged = true;
-            console.log("directionYChanged");
           } else {
             directionYChanged = false;
           }
@@ -239,51 +324,57 @@ function resetBunnyMovementParameters() {
   moveSpeedY = 0;
 }
 
-document.addEventListener("keydown", (event) => {
-  switch (event.key) {
-    case "ArrowUp":
-      accelerationY = -force;
-      break;
-    case "ArrowDown":
-      accelerationY = force;
-      break;
-    case "ArrowLeft":
-      accelerationX = -force;
-      break;
-    case "ArrowRight":
-      accelerationX = force;
-      break;
-    case " ": // space bar
-      resetBunnyMovementParameters();
-      break;
-    case "r":
-      resetStage();
-      break;
-    case "b":
-      console.log("b for add Bunny");
-      addBunnyButton.click();
-      break;
-    case "n":
-      addOrRemoveCellNumbers();
-      break;
-    default:
-      console.log("No key binding to this button:", event.key);
-      break;
-  }
-});
+async function floodTheMaze() {
+  console.log("Flooding the maze!");
 
-// Listen for keyup events to stop the bunny's movement
-document.addEventListener("keyup", (event) => {
-  if (bunny) {
-    switch (event.key) {
-      case "ArrowUp":
-      case "ArrowDown":
-        accelerationY = 0;
-        break;
-      case "ArrowLeft":
-      case "ArrowRight":
-        accelerationX = 0;
-        break;
+  // Goal: Sort the cells by their order for later flooding (so we can iterate by their index without repeating to look for the next cell).
+  // Sometimes there are branches in the array so there might be 2 (maybe more idk) elements with the same order field value
+  // Step 1: Flatten the 2D array into a 1D array
+  const richGrid1D = richGrid.flat();
+
+  // Step 2: Sort the 1D array based on the order field
+  const sortedRichGrid = richGrid1D.toSorted((a, b) => a.order - b.order);
+
+  const waitTime = 10;
+  const cellWidth = (window.innerHeight - 5) / richGrid.length;
+  const cellHeight = (window.innerHeight - 5) / richGrid.length;
+
+  // Draw rectangles in the order of the new array, wait "waitTime" milliseconds between each
+  for (let i = 0; i < sortedRichGrid.length; i++) {
+    const element = sortedRichGrid[i];
+
+    // Calculate the fill color based on the position in the loop
+    let fillColor;
+    if (i === 0) {
+      fillColor = 0x00ff00; // Green for the first cell
+    } else if (i === sortedRichGrid.length - 1) {
+      fillColor = 0xff0000; // Red for the last cell
+    } else {
+      fillColor = interpolateColor(i, sortedRichGrid.length);
     }
+
+    // Draw rectangle
+    const rectangle = new Graphics();
+    rectangle.beginFill(fillColor);
+    rectangle.drawRect(element.xCoordinate * cellWidth + wallSize, element.yCoordinate * cellHeight + wallSize, cellWidth, cellHeight);
+    rectangle.endFill();
+    rectangle.zIndex = -1; // Set the zIndex to place it below other elements
+    app.stage.addChild(rectangle); // Add the rectangle to the stage
+
+    // Wait a little before going to the next iteration of the loop
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
   }
-});
+
+  // Function to interpolate color based on position in the loop
+  function interpolateColor(position, total) {
+    const startColor = 0x074173; // Blue
+    const endColor = 0xadd8e6; // Light blue
+    // const startColor = 0xff0000; // Red
+    // const endColor = 0x00ff00; // Green
+    const ratio = position / total;
+    const r = Math.round((1 - ratio) * (startColor >> 16) + ratio * (endColor >> 16));
+    const g = Math.round((1 - ratio) * ((startColor >> 8) & 0xff) + ratio * ((endColor >> 8) & 0xff));
+    const b = Math.round((1 - ratio) * (startColor & 0xff) + ratio * (endColor & 0xff));
+    return (r << 16) + (g << 8) + b;
+  }
+}

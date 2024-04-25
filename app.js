@@ -57,13 +57,15 @@ function drawGrid(grid) {
       graphics.stroke({ width: wallSize, color: 0xffffff });
 
       // Draw numbers
-      const text = new Text({
-        style: { fontFamily: "Arial", fontSize: 20, fill: 0xffffff, align: "center" },
-        text: grid[y][x].value.toString(),
-        x: x * cellSize + wallSize + 2, //Shift them a little to the right so that line and number don't overlap
-        y: y * cellSize + wallSize,
-      });
-      cellsText.push(text);
+      if (gridHeight < 20) {
+        const text = new Text({
+          style: { fontFamily: "Arial", fontSize: 20, fill: 0xffffff, align: "center" },
+          text: grid[y][x].value.toString(),
+          x: x * cellSize + wallSize + 2, //Shift them a little to the right so that line and number don't overlap
+          y: y * cellSize + wallSize,
+        });
+        cellsText.push(text);
+      }
     }
   }
 
@@ -74,9 +76,11 @@ function drawGrid(grid) {
   graphics.stroke({ width: wallSize, color: 0xffffff });
 
   app.stage.addChild(graphics);
-  cellsText.forEach((text) => {
-    app.stage.addChild(text);
-  });
+  if (gridHeight < 20) {
+    cellsText.forEach((text) => {
+      app.stage.addChild(text);
+    });
+  }
 }
 
 export const wallSize = 2; // Also works as offset
