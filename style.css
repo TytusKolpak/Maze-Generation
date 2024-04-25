@@ -16,6 +16,7 @@ canvas {
   flex-direction: column;
 
   gap: 10px;
+  color: #ffffff;
 }
 
 button:hover {

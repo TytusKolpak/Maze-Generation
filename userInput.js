@@ -1,5 +1,5 @@
 import app, { drawMaze, richGrid, cellsText, wallSize } from "./app.js";
-import { Assets, Sprite, Graphics } from "./node_modules/pixi.js/dist/pixi.min.mjs";
+import { Assets, Sprite, Graphics, SCALE_MODES } from "./node_modules/pixi.js/dist/pixi.min.mjs";
 
 // Initialize global movement parameters
 var numbersDisplayed = true,
@@ -16,13 +16,17 @@ var numbersDisplayed = true,
   frictionCoefficient = 0.04,
   gameOver = false,
   directionXChanged = false,
-  directionYChanged = false;
+  directionYChanged = false,
+  lastCellXCoordinate = 1000,
+  lastCellYCoordinate = 1000,
+  smoothMovementType = true;
 
 const gridSizeInput = document.getElementById("gridSizeInput");
 const addOrRemoveCellNumbersButton = document.getElementById("addOrRemoveCellNumbers");
 const addBunnyButton = document.getElementById("addBunnyButton");
 const addKnightButton = document.getElementById("addKnightButton");
 const floodTheMazeButton = document.getElementById("floodTheMazeButton");
+const movementTypeButton = document.getElementById("movementTypeButton");
 
 // Listen for changes to the input field
 gridSizeInput.addEventListener("input", (event) => {
@@ -39,8 +43,11 @@ addBunnyButton.addEventListener("click", async () => {
   // Load the bunny texture
   const texture = await Assets.load("images/bunny.png");
 
-  // Create a bunny Sprite
-  bunny = new Sprite(texture);
+  // Set the texture's scale mode to nearest to preserve pixelation
+  texture.baseTexture.scaleMode = SCALE_MODES.NEAREST;
+
+  // Create the bunny sprite
+  bunny = Sprite.from(texture);
 
   // Center the sprite's anchor point
   bunny.anchor.set(0.5);
@@ -48,8 +55,20 @@ addBunnyButton.addEventListener("click", async () => {
   // Move the sprite to the center of the first cell
   const cellWidth = (window.innerHeight - 5) / richGrid.length;
   const cellHeight = (window.innerHeight - 5) / richGrid.length;
-  bunny.x = cellWidth / 2;
-  bunny.y = cellHeight / 2;
+  bunny.x = cellWidth / 2 + wallSize;
+  bunny.y = cellHeight / 2 + wallSize;
+
+  // Resize the sprite
+  console.log(cellHeight, bunny.height, bunny.width); // x, 37,26
+  if (cellHeight > 60) {
+    const resizeProportion = (cellWidth / bunny.height) * 0.4;
+    console.log({ resizeProportion });
+    bunny.scale.x *= resizeProportion;
+    bunny.scale.y *= resizeProportion;
+  } else {
+    bunny.height = cellHeight * 0.8;
+    bunny.width = cellHeight * (26 / 37) * 0.8;
+  }
 
   app.stage.addChild(bunny);
   console.log("Added bunny to the stage");
@@ -90,7 +109,12 @@ addBunnyButton.addEventListener("click", async () => {
     // Detect collision with the cell walls
     detectCollision(walls);
     if (!gameOver) {
-      if (bunny.x > cellWidth * (richGrid[0].length - 1) && bunny.y > cellHeight * (richGrid.length - 1)) {
+      if (
+        bunny.x > lastCellXCoordinate * cellWidth &&
+        bunny.x < lastCellXCoordinate * cellWidth + cellWidth &&
+        bunny.y > lastCellYCoordinate * cellHeight &&
+        bunny.y < lastCellYCoordinate * cellHeight + cellHeight
+      ) {
         gameOverFun();
       }
     }
@@ -99,7 +123,9 @@ addBunnyButton.addEventListener("click", async () => {
     bunny.y += moveSpeedY * delta.deltaTime;
   };
 
-  app.ticker.add(tickerHandler);
+  if (smoothMovementType) {
+    app.ticker.add(tickerHandler);
+  }
 });
 
 addKnightButton.addEventListener("click", () => {
@@ -110,20 +136,47 @@ floodTheMazeButton.addEventListener("click", () => {
   floodTheMaze();
 });
 
+movementTypeButton.addEventListener("click", function () {
+  changeMovementType();
+});
+
 document.addEventListener("keydown", (event) => {
+  if (smoothMovementType) {
+    switch (event.key) {
+      case "ArrowUp":
+        accelerationY = -force;
+        break;
+      case "ArrowDown":
+        accelerationY = force;
+        break;
+      case "ArrowLeft":
+        accelerationX = -force;
+        break;
+      case "ArrowRight":
+        accelerationX = force;
+        break;
+    }
+  } else {
+    const cellWidth = (window.innerHeight - 5) / richGrid.length;
+    const cellHeight = (window.innerHeight - 5) / richGrid.length;
+    // TODO Collision detection for tick movement
+    switch (event.key) {
+      case "ArrowUp":
+        bunny.y -= cellHeight;
+        break;
+      case "ArrowDown":
+        bunny.y += cellHeight;
+        break;
+      case "ArrowLeft":
+        bunny.x -= cellWidth;
+        break;
+      case "ArrowRight":
+        bunny.x += cellWidth;
+        break;
+    }
+  }
+
   switch (event.key) {
-    case "ArrowUp":
-      accelerationY = -force;
-      break;
-    case "ArrowDown":
-      accelerationY = force;
-      break;
-    case "ArrowLeft":
-      accelerationX = -force;
-      break;
-    case "ArrowRight":
-      accelerationX = force;
-      break;
     case " ": // space bar
       resetBunnyMovementParameters();
       break;
@@ -143,8 +196,8 @@ document.addEventListener("keydown", (event) => {
     case "f":
       floodTheMaze();
       break;
-    default:
-      console.log("No key binding to this button:", event.key);
+    case "m":
+      changeMovementType();
       break;
   }
 });
@@ -200,6 +253,17 @@ function addOrRemoveCellNumbers() {
       app.stage.addChild(text);
     });
     numbersDisplayed = true;
+  }
+}
+
+function changeMovementType() {
+  console.log("Changing movement type");
+  smoothMovementType = !smoothMovementType;
+  if (smoothMovementType) {
+    // Display opposite type for user to switch to
+    movementTypeButton.textContent = "Smooth Movement";
+  } else {
+    movementTypeButton.textContent = "Tick Movement";
   }
 }
 
@@ -309,8 +373,10 @@ function resetStage() {
   gameOver = false;
   const newSize = parseInt(gridSizeInput.value);
   if (newSize) {
-    if (newSize >= 2 && newSize <= 50) {
+    if (newSize >= 2 && newSize <= 100) {
       drawMaze(newSize);
+    } else {
+      drawMaze(5);
     }
   } else {
     drawMaze(5);
@@ -349,6 +415,7 @@ async function floodTheMaze() {
   const waitTime = 10;
   const cellWidth = (window.innerHeight - 5) / richGrid.length;
   const cellHeight = (window.innerHeight - 5) / richGrid.length;
+  let endFound = false;
 
   // Draw rectangles in the order of the new array, wait "waitTime" milliseconds between each
   for (let i = 0; i < groupedCellsArray.length; i++) {
@@ -360,8 +427,12 @@ async function floodTheMaze() {
       let fillColor;
       if (i === 0) {
         fillColor = 0x00ff00; // Green for the first cell
-      } else if (i === groupedCellsArray.length - 1) {
+      } else if (!endFound && i === groupedCellsArray.length - 1) {
         fillColor = 0xff0000; // Red for the last cell
+        endFound = true; //There can be more than 1 "last" cells
+        console.log("Last cell:", cell);
+        lastCellXCoordinate = cell.xCoordinate;
+        lastCellYCoordinate = cell.yCoordinate;
       } else {
         fillColor = interpolateColor(i, groupedCellsArray.length);
       }
