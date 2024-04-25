@@ -335,31 +335,45 @@ async function floodTheMaze() {
   // Step 2: Sort the 1D array based on the order field
   const sortedRichGrid = richGrid1D.toSorted((a, b) => a.order - b.order);
 
+  let groupedCells = {};
+  for (let cell of sortedRichGrid) {
+    if (!groupedCells[cell.order]) {
+      groupedCells[cell.order] = [];
+    }
+    groupedCells[cell.order].push(cell);
+  }
+
+  // Convert the object to an array of arrays
+  let groupedCellsArray = Object.values(groupedCells);
+
   const waitTime = 10;
   const cellWidth = (window.innerHeight - 5) / richGrid.length;
   const cellHeight = (window.innerHeight - 5) / richGrid.length;
 
   // Draw rectangles in the order of the new array, wait "waitTime" milliseconds between each
-  for (let i = 0; i < sortedRichGrid.length; i++) {
-    const element = sortedRichGrid[i];
+  for (let i = 0; i < groupedCellsArray.length; i++) {
+    const cellGroup = groupedCellsArray[i];
 
-    // Calculate the fill color based on the position in the loop
-    let fillColor;
-    if (i === 0) {
-      fillColor = 0x00ff00; // Green for the first cell
-    } else if (i === sortedRichGrid.length - 1) {
-      fillColor = 0xff0000; // Red for the last cell
-    } else {
-      fillColor = interpolateColor(i, sortedRichGrid.length);
+    // Iterate over objects in the current group
+    for (let cell of cellGroup) {
+      // Calculate the fill color based on the position in the loop
+      let fillColor;
+      if (i === 0) {
+        fillColor = 0x00ff00; // Green for the first cell
+      } else if (i === groupedCellsArray.length - 1) {
+        fillColor = 0xff0000; // Red for the last cell
+      } else {
+        fillColor = interpolateColor(i, groupedCellsArray.length);
+      }
+
+      // Draw rectangle
+      const rectangle = new Graphics();
+      rectangle.beginFill(fillColor);
+      rectangle.drawRect(cell.xCoordinate * cellWidth + wallSize, cell.yCoordinate * cellHeight + wallSize, cellWidth, cellHeight);
+      rectangle.endFill();
+      rectangle.zIndex = -1; // Set the zIndex to place it below other cells
+      app.stage.addChild(rectangle); // Add the rectangle to the stage
     }
-
-    // Draw rectangle
-    const rectangle = new Graphics();
-    rectangle.beginFill(fillColor);
-    rectangle.drawRect(element.xCoordinate * cellWidth + wallSize, element.yCoordinate * cellHeight + wallSize, cellWidth, cellHeight);
-    rectangle.endFill();
-    rectangle.zIndex = -1; // Set the zIndex to place it below other elements
-    app.stage.addChild(rectangle); // Add the rectangle to the stage
 
     // Wait a little before going to the next iteration of the loop
     await new Promise((resolve) => setTimeout(resolve, waitTime));
